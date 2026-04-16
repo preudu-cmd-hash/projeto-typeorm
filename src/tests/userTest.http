@@ -31,4 +31,4 @@ Content-Type: application/json
 }
 
 ###
-PATCH  http://localhost:3000/api/users/3/toggle
+PATCH  http://localhost:3000/api/users/4/toggle
