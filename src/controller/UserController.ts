@@ -86,6 +86,7 @@ export class UserController {
       next(error);
     }
   };
+
   delete = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
