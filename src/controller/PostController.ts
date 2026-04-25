@@ -4,7 +4,6 @@ import { Post } from "../entity/Post";
 import { User } from "../entity/User";
 import { BadRequestError, NotFoundError } from "../helpers/apiError";
 import { validate } from "class-validator";
-import { IValidationError } from "../types/IValidationError";
 import { formatErrors } from "../helpers/formatErrors";
 
 export class PostController {
@@ -61,7 +60,8 @@ export class PostController {
 
       const errors = await validate(post);
       if (errors.length > 0) {
-        throw new BadRequestError("Falha de validação");
+        const formattedErrors = formatErrors(errors);
+        throw new BadRequestError("Falha de validação", formattedErrors);
       }
 
       const updated = await this.postRepository.save(post);

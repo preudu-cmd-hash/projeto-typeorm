@@ -20,7 +20,11 @@ export class UserController {
       const errors = await validate(newUser);
       const exists = await this.userRepository.findOneBy({ email: email });
       if (exists) {
-        throw new BadRequestError("O email fornecido já está em uso");
+        const formattedErrors = formatErrors(errors);
+        throw new BadRequestError(
+          "O email fornecido já está em uso",
+          formattedErrors,
+        );
       }
       if (errors.length > 0) {
         const formattedErrors = formatErrors(errors);
