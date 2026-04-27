@@ -17,7 +17,7 @@ export class User {
   @IsString({ message: "Sobrenome precisa ser um texto" })
   lastName!: string;
 
-  @Column("varchar", { unique: true, length: 254 })
+  @Column("varchar", { unique: true, length: 254, nullable: false })
   @IsNotEmpty({ message: "O email é obrigatório" })
   @IsEmail({}, { message: "O email fornecido não é válido" })
   email!: string;
