@@ -18,6 +18,7 @@ export class User {
   lastName!: string;
 
   @Column("varchar", { unique: true, length: 254 })
+  @IsNotEmpty({ message: "O email é obrigatório" })
   @IsEmail({}, { message: "O email fornecido não é válido" })
   email!: string;
 
