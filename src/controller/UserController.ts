@@ -23,7 +23,7 @@ export class UserController {
         const formattedErrors = formatErrors(errors);
         throw new BadRequestError(
           "O email fornecido já está em uso",
-          formattedErrors,
+          formattedErrors
         );
       }
       if (errors.length > 0) {
