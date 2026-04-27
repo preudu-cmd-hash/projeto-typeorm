@@ -20,11 +20,7 @@ export class UserController {
       const errors = await validate(newUser);
       const exists = await this.userRepository.findOneBy({ email: email });
       if (exists) {
-        const formattedErrors = formatErrors(errors);
-        throw new BadRequestError(
-          "O email fornecido já está em uso",
-          formattedErrors
-        );
+        throw new BadRequestError("O email fornecido já está em uso");
       }
       if (errors.length > 0) {
         const formattedErrors = formatErrors(errors);
@@ -40,16 +36,25 @@ export class UserController {
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
-      const { firstName, lastName } = req.body;
+      const updatedUser = req.body;
       if (isNaN(id)) {
         throw new BadRequestError("ID inválido");
       }
+
       const user = await this.userRepository.findOneBy({ id });
       if (!user) {
         throw new NotFoundError("Usuário não encontrado");
       }
-      user.firstName = firstName ?? user.firstName;
-      user.lastName = lastName ?? user.lastName;
+
+      const exists = await this.userRepository.findOneBy({
+        email: updatedUser.email,
+      });
+      if (exists) {
+        throw new BadRequestError("O email fornecido já está em uso");
+      }
+      user.firstName = updatedUser.firstName ?? user.firstName;
+      user.lastName = updatedUser.lastName ?? user.lastName;
+      user.email = updatedUser.email ?? user.email;
       await this.userRepository.save(user);
       return res.json(user);
     } catch (error: unknown) {
