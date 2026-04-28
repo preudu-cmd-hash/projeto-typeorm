@@ -9,12 +9,13 @@ export class UserController {
   private userRepository = AppDataSource.getRepository(User);
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { firstName, lastName, email } = req.body;
+      const { firstName, lastName, email, phone } = req.body;
 
       const newUser = this.userRepository.create({
         firstName,
         lastName,
         email,
+        phone,
       });
 
       const errors = await validate(newUser);
@@ -55,6 +56,7 @@ export class UserController {
       user.firstName = updatedUser.firstName ?? user.firstName;
       user.lastName = updatedUser.lastName ?? user.lastName;
       user.email = updatedUser.email ?? user.email;
+      user.phone = updatedUser.phone ?? user.phone;
       await this.userRepository.save(user);
       return res.json(user);
     } catch (error: unknown) {
