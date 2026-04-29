@@ -57,6 +57,12 @@ export class UserController {
       user.lastName = updatedUser.lastName ?? user.lastName;
       user.email = updatedUser.email ?? user.email;
       user.phone = updatedUser.phone ?? user.phone;
+
+      const errors = await validate(user)
+      if(errors.length > 0) {
+        const formattedErrors = formatErrors(errors);
+        throw new BadRequestError("Falha de validação", formattedErrors)
+      }
       await this.userRepository.save(user);
       return res.json(user);
     } catch (error: unknown) {
