@@ -4,31 +4,40 @@ import type { NextFunction, Request, Response } from "express";
 import { BadRequestError, NotFoundError } from "../helpers/apiError";
 import { validate } from "class-validator";
 import { formatErrors } from "../helpers/formatErrors";
+import bcrypt from 'bcryptjs';
 
 export class UserController {
   private userRepository = AppDataSource.getRepository(User);
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { firstName, lastName, email, phone } = req.body;
-
-      const newUser = this.userRepository.create({
-        firstName,
-        lastName,
-        email,
-        phone,
-      });
-
-      const errors = await validate(newUser);
+      const { firstName, lastName, email, password, phone } = req.body;
+      
       const exists = await this.userRepository.findOneBy({ email: email });
       if (exists) {
         throw new BadRequestError("O email fornecido já está em uso");
       }
+      
+      const hasadPassword = await bcrypt.hash(password, 10)
+      
+      const newUser = this.userRepository.create({
+        firstName,
+        lastName,
+        email,
+        password: hasadPassword,
+        phone,
+      });
+
+      const errors = await validate(newUser);
       if (errors.length > 0) {
         const formattedErrors = formatErrors(errors);
         throw new BadRequestError("Falha de validação", formattedErrors);
       }
+
       await this.userRepository.save(newUser);
-      return res.status(201).json(newUser);
+
+      const {password: _, ...userPublic} = newUser
+
+      return res.status(201).json(userPublic);
     } catch (error: unknown) {
       next(error);
     }
@@ -41,30 +50,38 @@ export class UserController {
       if (isNaN(id)) {
         throw new BadRequestError("ID inválido");
       }
-
+      
+      
       const user = await this.userRepository.findOneBy({ id });
       if (!user) {
         throw new NotFoundError("Usuário não encontrado");
       }
-
-      const exists = await this.userRepository.findOneBy({
-        email: updatedUser.email,
-      });
-      if (exists) {
-        throw new BadRequestError("O email fornecido já está em uso");
+      
+      if(updatedUser.email && updatedUser.email !== user.email){
+        const exists = await this.userRepository.findOneBy({
+          email: updatedUser.email,
+        });
+        if (exists) {
+          throw new BadRequestError("O email fornecido já está em uso");
+        }
       }
+
       user.firstName = updatedUser.firstName ?? user.firstName;
       user.lastName = updatedUser.lastName ?? user.lastName;
       user.email = updatedUser.email ?? user.email;
+      if(updatedUser.password) {
+        user.password = await bcrypt.hash(updatedUser.password, 10)
+      }
       user.phone = updatedUser.phone ?? user.phone;
 
-      const errors = await validate(user)
+      const errors = await validate(user, { skipMissingProperties: true })
       if(errors.length > 0) {
         const formattedErrors = formatErrors(errors);
         throw new BadRequestError("Falha de validação", formattedErrors)
       }
       await this.userRepository.save(user);
-      return res.json(user);
+      const {password: _, ...publicUser} = user;
+      return res.json(publicUser);
     } catch (error: unknown) {
       next(error);
     }
