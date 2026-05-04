@@ -11,6 +11,6 @@ router.get("/active", userControler.listActive);
 router.patch("/:id", authMiddleware, userControler.update);
 router.get("/:id", userControler.listById);
 router.patch("/:id/toggle", userControler.toggleActive);
-router.delete("/:id", userControler.delete);
+router.delete("/:id", authMiddleware, userControler.delete);
 
 export const userRoutes = router;
