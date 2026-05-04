@@ -1,42 +1,15 @@
-import { AppDataSource } from "../data-source";
-import { User } from "../entity/User";
 import type { NextFunction, Request, Response } from "express";
 import { BadRequestError, NotFoundError } from "../helpers/apiError";
-import { validate } from "class-validator";
-import { formatErrors } from "../helpers/formatErrors";
-import bcrypt from 'bcryptjs';
+import { UserService } from "../service/UserService";
 
 export class UserController {
-  private userRepository = AppDataSource.getRepository(User);
+  private userService = new UserService();
+
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { firstName, lastName, email, password, phone } = req.body;
-      
-      const exists = await this.userRepository.findOneBy({ email: email });
-      if (exists) {
-        throw new BadRequestError("O email fornecido já está em uso");
-      }
-      
-      const hasadPassword = await bcrypt.hash(password, 10)
-      
-      const newUser = this.userRepository.create({
-        firstName,
-        lastName,
-        email,
-        password: hasadPassword,
-        phone,
-      });
-
-      const errors = await validate(newUser);
-      if (errors.length > 0) {
-        const formattedErrors = formatErrors(errors);
-        throw new BadRequestError("Falha de validação", formattedErrors);
-      }
-
-      await this.userRepository.save(newUser);
-
-      const {password: _, ...userPublic} = newUser
-
+      await this.userService.validateSchema(req.body);
+      const newUser = await this.userService.create(req.body);
+      const { password: _, ...userPublic } = newUser;
       return res.status(201).json(userPublic);
     } catch (error: unknown) {
       next(error);
@@ -45,51 +18,19 @@ export class UserController {
 
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = Number(req.params.id);
-      const updatedUser = req.body;
-      if (isNaN(id)) {
-        throw new BadRequestError("ID inválido");
-      }
-      
-      
-      const user = await this.userRepository.findOneBy({ id });
-      if (!user) {
-        throw new NotFoundError("Usuário não encontrado");
-      }
-      
-      if(updatedUser.email && updatedUser.email !== user.email){
-        const exists = await this.userRepository.findOneBy({
-          email: updatedUser.email,
-        });
-        if (exists) {
-          throw new BadRequestError("O email fornecido já está em uso");
-        }
-      }
-
-      user.firstName = updatedUser.firstName ?? user.firstName;
-      user.lastName = updatedUser.lastName ?? user.lastName;
-      user.email = updatedUser.email ?? user.email;
-      if(updatedUser.password) {
-        user.password = await bcrypt.hash(updatedUser.password, 10)
-      }
-      user.phone = updatedUser.phone ?? user.phone;
-
-      const errors = await validate(user, { skipMissingProperties: true })
-      if(errors.length > 0) {
-        const formattedErrors = formatErrors(errors);
-        throw new BadRequestError("Falha de validação", formattedErrors)
-      }
-      await this.userRepository.save(user);
-      const {password: _, ...publicUser} = user;
-      return res.json(publicUser);
-    } catch (error: unknown) {
+      const id = req.user_id;
+      await this.userService.validateSchema(req.body, true);
+      const user = await this.userService.update(id!, req.body);
+      const { password: _, ...userPublic } = user;
+      return res.status(200).json(userPublic);
+    } catch (error) {
       next(error);
     }
   };
 
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const users = await this.userRepository.find();
+      const users = await this.userService.list();
       return res.json(users);
     } catch (error: unknown) {
       next(error);
@@ -98,7 +39,7 @@ export class UserController {
 
   listActive = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const users = await this.userRepository.findBy({ isActive: true });
+      const users = await this.userService.listActive();
       return res.json(users);
     } catch (error: unknown) {
       next(error);
@@ -108,29 +49,19 @@ export class UserController {
   listById = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
-      if (isNaN(id)) {
-        throw new BadRequestError("ID inválido");
-      }
-      const user = await this.userRepository.findOneBy({ id });
-      if (!user) {
-        throw new NotFoundError("Usuário não encontrado");
-      }
+      const user = await this.userService.listById(id);
       return res.json(user);
     } catch (error: unknown) {
       next(error);
     }
   };
-
   delete = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) {
         throw new BadRequestError("ID inválido");
       }
-      const result = await this.userRepository.delete(id);
-      if (result.affected === 0) {
-        throw new NotFoundError("Usuário não encontrado");
-      }
+      await this.userService.delete(id);
       return res.status(204).send();
     } catch (error: unknown) {
       next(error);
@@ -143,12 +74,8 @@ export class UserController {
       if (isNaN(id)) {
         throw new BadRequestError("ID inválido");
       }
-      const user = await this.userRepository.findOneBy({ id });
-      if (!user) {
-        throw new NotFoundError("Usuário não encontrado");
-      }
-      user.isActive = !user.isActive;
-      await this.userRepository.save(user);
+      const user = await this.userService.toggleActive(id);
+
       return res.json({
         message: `Usuário ${
           user.isActive ? "ativado" : "desativado"

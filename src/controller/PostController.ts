@@ -4,6 +4,7 @@ import { Post } from "../entity/Post";
 import { User } from "../entity/User";
 import { BadRequestError, NotFoundError } from "../helpers/apiError";
 import { validate } from "class-validator";
+import { IValidationError } from "../types/IValidationError";
 import { formatErrors } from "../helpers/formatErrors";
 
 export class PostController {
@@ -21,8 +22,9 @@ export class PostController {
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { title, content, userId } = req.body;
-      if (isNaN(userId)) {
+      const { title, content } = req.body;
+      const userId = req.user_id;
+      if (userId && isNaN(userId)) {
         throw new BadRequestError("Id do usuário inválido");
       }
       const user = await this.userRepository.findOneBy({ id: userId });
@@ -44,30 +46,37 @@ export class PostController {
 
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id: number = Number(req.params.id);
-      if (isNaN(id)) {
-        throw new BadRequestError("ID Inválido");
+      const postId = Number(req.params.id);
+      const { title, content } = req.body;
+      const userId = req.user_id;
+      if (isNaN(postId)) {
+        throw new BadRequestError("Id do post inválido");
       }
-      const updatedPost = req.body;
-
-      const post = await this.postRepository.findOneBy({ id });
+      const post = await this.postRepository.findOneBy({
+        id: postId,
+      });
       if (!post) {
         throw new NotFoundError("Post não encontrado");
       }
-
-      post.title = updatedPost.title ?? post.title;
-      post.content = updatedPost.content ?? post.content;
-
+      if (userId) {
+        if (isNaN(userId)) {
+          throw new BadRequestError("Id do usuário inválido");
+        }
+        const user = await this.userRepository.findOneBy({ id: userId });
+        if (!user) {
+          throw new NotFoundError("Usuário não encontrado.");
+        }
+        post.user = user ?? post.user;
+      }
+      post.title = title ?? post.title;
+      post.content = content ?? post.content;
       const errors = await validate(post);
       if (errors.length > 0) {
         const formattedErrors = formatErrors(errors);
         throw new BadRequestError("Falha de validação", formattedErrors);
       }
-
-      const updated = await this.postRepository.save(post);
-      return res
-        .status(200)
-        .json({ message: "Post atualizado com sucesso", post: updated });
+      await this.postRepository.save(post);
+      return res.status(200).json(post);
     } catch (error: unknown) {
       next(error);
     }
@@ -75,17 +84,14 @@ export class PostController {
 
   delete = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id: number = Number(req.params.id);
+      const id = Number(req.params.id);
       if (isNaN(id)) {
         throw new BadRequestError("ID inválido");
       }
-
-      const post = await this.postRepository.findOneBy({ id });
-      if (!post) {
+      const result = await this.postRepository.delete(id);
+      if (result.affected === 0) {
         throw new NotFoundError("Post não encontrado");
       }
-
-      await this.postRepository.delete(id);
       return res.status(204).send();
     } catch (error: unknown) {
       next(error);
