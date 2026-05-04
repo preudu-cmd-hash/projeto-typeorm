@@ -90,6 +90,6 @@ export class UserService {
     }
     user.isActive = !user.isActive;
     await this.userRepository.save(user);
-    return user.isActive;
+    return user;
   };
 }
