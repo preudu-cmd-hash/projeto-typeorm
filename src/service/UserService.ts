@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { AppDataSource } from "../data-source";
-import { User } from "../entity/User";
+import { User, UserRole } from "../entity/User";
 import { BadRequestError, NotFoundError } from "../helpers/apiError";
 import { validate } from "class-validator";
 import { formatErrors } from "../helpers/formatErrors";
@@ -91,5 +91,14 @@ export class UserService {
     user.isActive = !user.isActive;
     await this.userRepository.save(user);
     return user;
+  };
+
+  updateRole = async (id: number, newRole: UserRole) => {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) {
+      throw new NotFoundError("Usuário não encontrado");
+    }
+    user.role = newRole;
+    return await this.userRepository.save(user);
   };
 }
