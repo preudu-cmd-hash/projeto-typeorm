@@ -25,7 +25,7 @@ export class AuthController {
         { expiresIn: "8h" }
       );
       return res.json({
-        user: { name: user.firstName, role: user.role },
+        user: { name: user.firstName, role: user.role, id: user.id },
         token,
       });
     } catch (error) {
