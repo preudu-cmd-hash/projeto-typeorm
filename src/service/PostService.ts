@@ -20,6 +20,7 @@ export class PostService {
       throw new BadRequestError("Falha de validação", formattedErrors);
     }
   };
+
   listAll = async () => {
     return await this.postRepository.find({ relations: ["user"] });
   };
