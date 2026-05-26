@@ -1,21 +1,17 @@
-import { AppDataSource } from "../data-source";
 import type { NextFunction, Request, Response } from "express";
-import { Post } from "../entity/Post";
-import { User } from "../entity/User";
-import { BadRequestError, NotFoundError } from "../helpers/apiError";
-import { validate } from "class-validator";
-import { formatErrors } from "../helpers/formatErrors";
+import { BadRequestError } from "../helpers/apiError";
 import { PostService } from "../service/PostService";
 
 export class PostController {
-  private postRepository = AppDataSource.getRepository(Post);
-  private userRepository = AppDataSource.getRepository(User);
   private postService = new PostService();
 
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const posts = await this.postService.listAll();
-      return res.status(200).json(posts);
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.max(1, Math.min(100, Number(req.query.limit)) || 10);
+
+      const result = await this.postService.listAll(page, limit);
+      return res.status(200).json(result);
     } catch (error: unknown) {
       next(error);
     }

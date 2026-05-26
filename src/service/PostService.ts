@@ -21,8 +21,27 @@ export class PostService {
     }
   };
 
-  listAll = async () => {
-    return await this.postRepository.find({ relations: ["user"] });
+  listAll = async (page: number, limit: number) => {
+    const skip = (page - 1) * limit;
+    const [post, totalItems] = await this.postRepository.findAndCount({
+      take: limit,
+      skip: skip,
+      order: { id: "DESC" },
+      relations: ["user"],
+    });
+
+    const totalPages = Math.ceil(totalItems / limit);
+    return {
+      data: post,
+      meta: {
+        totalItems,
+        currentPage: page,
+        totalPages,
+        itemsPerPage: limit,
+        hasNext: page < totalPages,
+        hasPrevious: page > 1,
+      },
+    };
   };
   create = async (title: string, content: string, userId: number) => {
     const user = await this.userRepository.findOneBy({ id: userId });
